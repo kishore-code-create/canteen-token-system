@@ -1,0 +1,17 @@
+run = "bash run.sh"
+modules = ["python-3.10"]
+
+[packager]
+language = "python3"
+
+[packager.features]
+packageSearch = true
+guessImports = true
+enableGuessImports = true
+
+[languages.python]
+pattern = "**/*.py"
+
+[env]
+PYTHONUNBUFFERED = "1"
+FLASK_ENV = "production"
