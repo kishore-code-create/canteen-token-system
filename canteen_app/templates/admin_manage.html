@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Manage Students</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            min-height: 100vh;
+            padding: 30px 20px;
+        }
+        .admin-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+        }
+        .card-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .card-body {
+            padding: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #333;
+        }
+        .form-control {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+        }
+        .form-control:focus {
+            border-color: #ee5a6f;
+            box-shadow: none;
+        }
+        .btn-add {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 600;
+        }
+        .btn-add:hover {
+            background: linear-gradient(135deg, #ee5a5a 0%, #dd4a5f 100%);
+            color: white;
+        }
+        .table {
+            margin-bottom: 0;
+        }
+        .table thead {
+            background: #f8f9fa;
+        }
+        .table tbody tr {
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        .btn-delete {
+            background: #ee5a6f;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-delete:hover {
+            background: #dd4a5f;
+        }
+        .alert {
+            border-radius: 8px;
+            border: none;
+        }
+        .back-link {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .back-link:hover {
+            color: #f0f0f0;
+        }
+        .badge {
+            padding: 6px 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <a href="/" class="back-link">← Back to Home</a>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>📝 Add New Student</h2>
+            </div>
+            <div class="card-body">
+                <div id="alertContainer"></div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Roll Number:</label>
+                            <input type="text" id="rollNumber" class="form-control" placeholder="e.g., 1602">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Student Name:</label>
+                            <input type="text" id="studentName" class="form-control" placeholder="e.g., John Doe">
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn-add" onclick="addStudent()">➕ Add Student</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>👥 Student List</h2>
+            </div>
+            <div class="card-body">
+                <div style="overflow-x: auto;">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Roll Number</th>
+                                <th>Name</th>
+                                <th>Passes Used</th>
+                                <th>Total Passes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTable">
+                            <tr>
+                                <td colspan="5" class="text-center">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showAlert(message, type) {
+            const alertHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            document.getElementById('alertContainer').innerHTML = alertHTML;
+        }
+
+        function loadStudents() {
+            fetch('/admin/api/students')
+                .then(response => response.json())
+                .then(students => {
+                    const table = document.getElementById('studentTable');
+                    
+                    if (students.length === 0) {
+                        table.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No students added yet</td></tr>';
+                        return;
+                    }
+
+                    table.innerHTML = students.map(student => `
+                        <tr>
+                            <td><strong>${student.roll_number}</strong></td>
+                            <td>${student.name}</td>
+                            <td><span class="badge bg-success">${student.passes_used}</span></td>
+                            <td><span class="badge bg-info">${student.passes_total}</span></td>
+                            <td>
+                                <button class="btn-delete" onclick="deleteStudent(${student.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error loading students:', error);
+                    document.getElementById('studentTable').innerHTML = 
+                        '<tr><td colspan="5" class="text-center text-danger">Error loading students</td></tr>';
+                });
+        }
+
+        function addStudent() {
+            const rollNumber = document.getElementById('rollNumber').value.trim().toUpperCase();
+            const studentName = document.getElementById('studentName').value.trim();
+
+            if (!rollNumber || !studentName) {
+                showAlert('Please fill in all fields', 'warning');
+                return;
+            }
+
+            fetch('/admin/api/students', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    roll_number: rollNumber,
+                    name: studentName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('✅ Student added successfully!', 'success');
+                    document.getElementById('rollNumber').value = '';
+                    document.getElementById('studentName').value = '';
+                    loadStudents();
+                } else {
+                    showAlert('❌ ' + (data.error || 'Error adding student'), 'danger');
+                }
+            })
+            .catch(error => {
+                showAlert('❌ Error: ' + error.message, 'danger');
+            });
+        }
+
+        function deleteStudent(studentId) {
+            if (confirm('Are you sure you want to delete this student? This cannot be undone!')) {
+                fetch(`/admin/api/students/${studentId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('✅ Student deleted!', 'success');
+                        loadStudents();
+                    } else {
+                        showAlert('❌ Error deleting student', 'danger');
+                    }
+                })
+                .catch(error => {
+                    showAlert('❌ Error: ' + error.message, 'danger');
+                });
+            }
+        }
+
+        // Load students on page load
+        document.addEventListener('DOMContentLoaded', loadStudents);
+    </script>
+</body>
+</html>

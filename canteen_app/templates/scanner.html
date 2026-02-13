@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner - Validate Lunch Passes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #fa8b29 0%, #fb7a3e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .scanner-container {
+            max-width: 600px;
+            width: 100%;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #fa8b29 0%, #fb7a3e 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px 15px 0 0;
+            text-align: center;
+        }
+        .card-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .card-body {
+            padding: 30px;
+        }
+        #video {
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            background: #000;
+            display: block;
+        }
+        .btn-start {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #fa8b29 0%, #fb7a3e 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-start:hover {
+            background: linear-gradient(135deg, #f97b19 0%, #fa6a2e 100%);
+            box-shadow: 0 5px 15px rgba(251, 122, 62, 0.4);
+        }
+        .result-container {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .result-container.show {
+            display: block;
+        }
+        .result-success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+        .result-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .result-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .result-message {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .student-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: left;
+        }
+        .student-info p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .student-info strong {
+            color: #333;
+        }
+        .alert {
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 20px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover {
+            color: #f0f0f0;
+        }
+        .scanner-status {
+            text-align: center;
+            color: white;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanner-container">
+        <div class="card">
+            <div class="card-header">
+                <h1>🔍 Lunch Pass Scanner</h1>
+            </div>
+            <div class="card-body">
+                <div id="alertContainer"></div>
+
+                <div>
+                    <video id="video" playsinline></video>
+                    <div class="scanner-status" id="scannerStatus">Ready to scan...</div>
+                    <button class="btn-start" id="startBtn" onclick="startScanner()">📹 Start Camera</button>
+                    <button class="btn-start" style="display: none; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);" id="stopBtn" onclick="stopScanner()">⏹️ Stop Camera</button>
+                </div>
+
+                <div class="result-container" id="resultContainer">
+                    <div class="result-title" id="resultTitle"></div>
+                    <div class="result-message" id="resultMessage"></div>
+                    <div class="student-info" id="studentInfo"></div>
+                </div>
+
+                <button class="btn-start" style="margin-top: 20px; background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);" onclick="resetScanner()">🔄 Reset</button>
+
+                <a href="/" class="back-link">← Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let video, canvasElement, canvas;
+        let isScanning = false;
+
+        function startScanner() {
+            video = document.getElementById('video');
+            canvasElement = document.createElement('canvas');
+            canvas = canvasElement.getContext('2d');
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(stream => {
+                    video.srcObject = stream;
+                    document.getElementById('startBtn').style.display = 'none';
+                    document.getElementById('stopBtn').style.display = 'block';
+                    document.getElementById('scannerStatus').textContent = '🟢 Scanning...';
+                    isScanning = true;
+                    scanQRCode();
+                })
+                .catch(err => {
+                    showAlert('❌ Camera permission denied: ' + err.message, 'danger');
+                });
+        }
+
+        function stopScanner() {
+            isScanning = false;
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            document.getElementById('startBtn').style.display = 'block';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('scannerStatus').textContent = 'Scanner stopped';
+        }
+
+        function scanQRCode() {
+            if (isScanning && video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvasElement.width = video.videoWidth;
+                canvasElement.height = video.videoHeight;
+                canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+
+                const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                if (code) {
+                    isScanning = false;
+                    stopScanner();
+                    validateToken(code.data);
+                    return;
+                }
+            }
+
+            if (isScanning) {
+                requestAnimationFrame(scanQRCode);
+            }
+        }
+
+        function validateToken(token) {
+            const resultContainer = document.getElementById('resultContainer');
+            
+            fetch('/api/validate-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ token: token })
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultContainer.classList.add('show');
+                
+                if (data.valid || data.success) {
+                    resultContainer.classList.add('result-success');
+                    resultContainer.classList.remove('result-error');
+                    document.getElementById('resultTitle').textContent = '✅ ACCESS GRANTED';
+                    document.getElementById('resultMessage').textContent = data.message;
+                    document.getElementById('studentInfo').innerHTML = `
+                        <p><strong>Student Name:</strong> ${data.student_name}</p>
+                        <p><strong>Roll Number:</strong> ${data.roll_number}</p>
+                        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                    `;
+                } else {
+                    resultContainer.classList.add('result-error');
+                    resultContainer.classList.remove('result-success');
+                    document.getElementById('resultTitle').textContent = '❌ ACCESS DENIED';
+                    document.getElementById('resultMessage').textContent = data.error;
+                    let studentInfo = `<p><strong>Reason:</strong> ${data.error}</p>`;
+                    if (data.student_name) {
+                        studentInfo += `<p><strong>Student:</strong> ${data.student_name}</p>`;
+                    }
+                    if (data.used_at) {
+                        studentInfo += `<p><strong>Already Used:</strong> ${new Date(data.used_at).toLocaleString()}</p>`;
+                    }
+                    document.getElementById('studentInfo').innerHTML = studentInfo;
+                }
+            })
+            .catch(error => {
+                resultContainer.classList.add('show');
+                resultContainer.classList.add('result-error');
+                document.getElementById('resultTitle').textContent = '❌ ERROR';
+                document.getElementById('resultMessage').textContent = 'Error: ' + error.message;
+            });
+        }
+
+        function resetScanner() {
+            stopScanner();
+            document.getElementById('resultContainer').classList.remove('show');
+            startScanner();
+        }
+
+        function showAlert(message, type) {
+            const alertHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            document.getElementById('alertContainer').innerHTML = alertHTML;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Lunch Pass - Canteen Token System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e9600 0%, #2ecc71 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container-custom {
+            max-width: 500px;
+            width: 100%;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #1e9600 0%, #2ecc71 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px 15px 0 0;
+            text-align: center;
+        }
+        .card-header h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .card-body {
+            padding: 40px;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .form-control {
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-control:focus {
+            border-color: #2ecc71;
+            box-shadow: none;
+            outline: none;
+        }
+        .btn-generate {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #1e9600 0%, #2ecc71 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-generate:hover {
+            background: linear-gradient(135deg, #1a7f00 0%, #27ae60 100%);
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
+        }
+        .btn-generate:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .alert {
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 20px;
+        }
+        .qr-container {
+            text-align: center;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 2px solid #e0e0e0;
+            display: none;
+        }
+        .qr-container.show {
+            display: block;
+        }
+        .qr-image {
+            max-width: 300px;
+            margin: 20px auto;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .qr-image img {
+            width: 100%;
+            height: auto;
+        }
+        .success-message {
+            font-size: 18px;
+            color: #1e9600;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .token-display {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+            color: #333;
+            margin-top: 15px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner-border {
+            color: #2ecc71;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #2ecc71;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover {
+            color: #1e9600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-custom">
+        <div class="card">
+            <div class="card-header">
+                <h1>🎟️ Generate Lunch Pass</h1>
+            </div>
+            <div class="card-body">
+                <div id="alertContainer"></div>
+
+                <div class="form-group">
+                    <label class="form-label">Roll Number:</label>
+                    <input type="text" id="rollNumber" class="form-control" placeholder="e.g., 1602" autocomplete="off">
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p style="margin-top: 10px; color: #666;">Processing...</p>
+                </div>
+
+                <button class="btn-generate" id="generateBtn" onclick="generateQR()">Generate QR Code</button>
+
+                <div class="qr-container" id="qrContainer">
+                    <p class="success-message" id="successMsg"></p>
+                    <div class="qr-image">
+                        <img id="qrImage" alt="QR Code">
+                    </div>
+                    <p style="color: #666; font-size: 14px; margin-top: 15px;">
+                        📱 Show this QR code at the canteen counter
+                    </p>
+                    <div class="token-display" id="tokenDisplay"></div>
+                </div>
+
+                <a href="/" class="back-link">← Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showAlert(message, type) {
+            const alertHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            document.getElementById('alertContainer').innerHTML = alertHTML;
+        }
+
+        function generateQR() {
+            const rollNumber = document.getElementById('rollNumber').value.trim();
+            
+            if (!rollNumber) {
+                showAlert('Please enter your roll number', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('generateBtn');
+            const loading = document.getElementById('loading');
+            const qrContainer = document.getElementById('qrContainer');
+
+            btn.disabled = true;
+            loading.style.display = 'block';
+            qrContainer.classList.remove('show');
+
+            fetch('/student/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ roll_number: rollNumber })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                btn.disabled = false;
+
+                if (data.success) {
+                    document.getElementById('successMsg').textContent = data.message;
+                    document.getElementById('qrImage').src = data.qr_code;
+                    document.getElementById('tokenDisplay').textContent = 'Token: ' + data.token;
+                    qrContainer.classList.add('show');
+                    showAlert('✅ ' + data.message, 'success');
+                    document.getElementById('rollNumber').value = '';
+                } else {
+                    showAlert('❌ ' + (data.error || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                loading.style.display = 'none';
+                btn.disabled = false;
+                showAlert('❌ Error: ' + error.message, 'danger');
+            });
+        }
+
+        // Allow Enter key to generate QR
+        document.getElementById('rollNumber').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                generateQR();
+            }
+        });
+    </script>
+</body>
+</html>
