@@ -8,26 +8,39 @@ import io
 import base64
 from PIL import Image
 import pandas as pd
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy.sql import func
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from models import db, Student, LunchPass
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-
-# Initialize Flask app and SQLAlchemy
-flask_app = Flask(__name__)
+# Database setup
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(ROOT_DIR, 'canteen_data.db')
 DATABASE_URL = f'sqlite:///{DB_PATH}'
-flask_app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-flask_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(flask_app)
 
-# Create tables if they don't exist
-with flask_app.app_context():
-    db.create_all()
+engine = create_engine(DATABASE_URL, echo=False)
+Session = sessionmaker(bind=engine)
+Base = declarative_base()
+
+# Database Models
+class Student(Base):
+    __tablename__ = 'student'
+    id = Column(Integer, primary_key=True)
+    roll_number = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+    passes = relationship('LunchPass', back_populates='student')
+
+class LunchPass(Base):
+    __tablename__ = 'lunch_pass'
+    id = Column(Integer, primary_key=True)
+    student_id = Column(Integer, nullable=False)
+    token = Column(String(100), unique=True, nullable=False)
+    generated_at = Column(DateTime, default=datetime.utcnow)
+    used = Column(Boolean, default=False)
+    used_at = Column(DateTime, nullable=True)
+    student = relationship('Student', back_populates='passes')
+
+# Create tables
+Base.metadata.create_all(engine)
 
 # Streamlit page config
 st.set_page_config(
@@ -103,15 +116,16 @@ if page == "📱 Student Portal":
             if not roll_number:
                 st.error("❌ Please enter your roll number")
             else:
-                with flask_app.app_context():
-                    student = Student.query.filter_by(roll_number=roll_number).first()
+                session = Session()
+                try:
+                    student = session.query(Student).filter_by(roll_number=roll_number).first()
                     
                     if not student:
                         st.error(f"❌ Roll number '{roll_number}' not found in system")
                         st.info("Contact admin if your roll number is incorrect")
                     else:
                         # Check if already has unused pass
-                        existing_pass = LunchPass.query.filter_by(
+                        existing_pass = session.query(LunchPass).filter_by(
                             student_id=student.id, 
                             used=False
                         ).first()
@@ -126,8 +140,8 @@ if page == "📱 Student Portal":
                                 student_id=student.id,
                                 token=token
                             )
-                            db.session.add(new_pass)
-                            db.session.commit()
+                            session.add(new_pass)
+                            session.commit()
                             
                             # Generate QR code
                             qr = qrcode.QRCode(
@@ -153,6 +167,8 @@ if page == "📱 Student Portal":
                             st.session_state.qr_code = img_base64
                             st.session_state.token = token
                             st.session_state.student_name = student.name
+                finally:
+                    session.close()
     
     with col2:
         st.subheader("🎫 Your QR Code")
@@ -209,26 +225,30 @@ elif page == "👨‍💼 Admin Panel":
         with admin_tab1:
             st.subheader("All Registered Students")
             
-            with flask_app.app_context():
-                students = Student.query.all()
+            session = Session()
+            try:
+                students = session.query(Student).all()
                 
                 if students:
-                    df = pd.DataFrame([
-                        {
+                    student_data = []
+                    for s in students:
+                        active_count = session.query(LunchPass).filter_by(
+                            student_id=s.id,
+                            used=False
+                        ).count()
+                        student_data.append({
                             'Roll Number': s.roll_number,
                             'Name': s.name,
-                            'Active Passes': LunchPass.query.filter_by(
-                                student_id=s.id,
-                                used=False
-                            ).count()
-                        }
-                        for s in students
-                    ])
+                            'Active Passes': active_count
+                        })
                     
+                    df = pd.DataFrame(student_data)
                     st.dataframe(df, use_container_width=True, hide_index=True)
                     st.info(f"Total Students: {len(students)}")
                 else:
                     st.warning("No students found")
+            finally:
+                session.close()
         
         with admin_tab2:
             st.subheader("Add New Student")
@@ -243,26 +263,32 @@ elif page == "👨‍💼 Admin Panel":
                 if not new_roll or not new_name:
                     st.error("❌ Please fill all fields")
                 else:
-                    with flask_app.app_context():
-                        existing = Student.query.filter_by(roll_number=new_roll).first()
+                    session = Session()
+                    try:
+                        existing = session.query(Student).filter_by(roll_number=new_roll).first()
                         if existing:
                             st.error(f"❌ Roll number {new_roll} already exists")
                         else:
                             new_student = Student(roll_number=new_roll, name=new_name)
-                            db.session.add(new_student)
-                            db.session.commit()
+                            session.add(new_student)
+                            session.commit()
                             st.success(f"✅ Student {new_name} added!")
                             st.rerun()
+                    finally:
+                        session.close()
         
         with admin_tab3:
             st.subheader("Delete Student")
             
-            with flask_app.app_context():
-                students = Student.query.all()
+            session = Session()
+            try:
+                students = session.query(Student).all()
                 student_options = {
                     f"{s.roll_number} - {s.name}": s.id 
                     for s in students
                 }
+            finally:
+                session.close()
             
             if student_options:
                 selected = st.selectbox(
@@ -272,10 +298,13 @@ elif page == "👨‍💼 Admin Panel":
                 
                 if st.button("🗑️ Delete", type="secondary", use_container_width=True):
                     student_id = student_options[selected]
-                    with flask_app.app_context():
-                        student = Student.query.get(student_id)
-                        db.session.delete(student)
-                        db.session.commit()
+                    session = Session()
+                    try:
+                        student = session.query(Student).get(student_id)
+                        session.delete(student)
+                        session.commit()
+                    finally:
+                        session.close()
                     st.success(f"✅ Student deleted!")
                     st.rerun()
             else:
@@ -287,10 +316,11 @@ elif page == "📊 Dashboard":
     st.markdown("Real-time system statistics and analytics")
     st.markdown("---")
     
-    with flask_app.app_context():
-        total_students = Student.query.count()
-        total_passes = LunchPass.query.count()
-        used_passes = LunchPass.query.filter_by(used=True).count()
+    session = Session()
+    try:
+        total_students = session.query(Student).count()
+        total_passes = session.query(LunchPass).count()
+        used_passes = session.query(LunchPass).filter_by(used=True).count()
         active_passes = total_passes - used_passes
         
         # Metrics
@@ -353,12 +383,12 @@ elif page == "📊 Dashboard":
         st.markdown("---")
         st.markdown("### Recent Activity")
         
-        recent_passes = LunchPass.query.order_by(LunchPass.generated_at.desc()).limit(10).all()
+        recent_passes = session.query(LunchPass).order_by(LunchPass.generated_at.desc()).limit(10).all()
         
         if recent_passes:
             activity_data = []
             for p in recent_passes:
-                student = Student.query.get(p.student_id)
+                student = session.query(Student).get(p.student_id)
                 activity_data.append({
                     'Roll Number': student.roll_number,
                     'Student Name': student.name,
@@ -374,3 +404,5 @@ elif page == "📊 Dashboard":
         
         st.markdown("---")
         st.caption("Data updates in real-time")
+    finally:
+        session.close()
