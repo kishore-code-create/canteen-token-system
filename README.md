@@ -1,73 +1,68 @@
-# 🍽️ Canteen Token System
+# Canteen Token System
 
-> QR-code based canteen lunch pass management system — built with Python, Flask and Streamlit
+A digital QR-code based canteen management system for institutions. Replaces physical lunch tokens with unique QR passes, validated in real time by scanner operators. Includes three dedicated interfaces for students, operators, and admins.
 
-![Python](https://img.shields.io/badge/Python-3.10-blue?logo=python) ![Flask](https://img.shields.io/badge/Flask-2.x-black?logo=flask) ![Streamlit](https://img.shields.io/badge/Streamlit-deployed-red?logo=streamlit) ![Docker](https://img.shields.io/badge/Docker-ready-blue?logo=docker)
+**Stack:** Python · Flask · Streamlit · SQLite · Docker · qrcode · pyzbar
 
-## 🏫 Overview
+---
 
-A complete digital canteen management system that replaces physical tokens with QR codes. Built for college/institutional use, it streamlines lunch pass generation, validation, and attendance tracking across three roles: students, scanner operators, and admins.
+## Overview
 
-## ✨ Features
+Physical token systems are slow and fraud-prone. This system digitises the entire workflow — students generate a one-time QR pass, operators scan it at the counter, and admins monitor attendance and usage in real time from a dashboard.
 
-- 🎫 **QR Token Generation** — Students generate unique QR lunch passes
-- 📷 **Real-time Scanner** — Operator app validates tokens via camera
-- 👨‍💼 **Admin Dashboard** — Full attendance and usage analytics
-- ☁️ **Cloud Ready** — Deployable on Streamlit Cloud, Railway, or Docker
-- 🔒 **One-time Use** — Each token is single-use to prevent fraud
-- 📊 **Live Reports** — Real-time attendance tracking
+## Interfaces
 
-## 🛠️ Tech Stack
+| App | Purpose |
+|-----|---------|
+| Student App | Generate unique QR lunch token by roll number |
+| Scanner App | Camera-based QR validation at the counter |
+| Admin Dashboard | Live attendance tracking and export |
 
-| Component | Technology |
-|-----------|-----------|
-| Backend | Python, Flask |
-| Web Apps | Streamlit |
-| Database | SQLite |
-| QR Codes | qrcode, pyzbar |
-| Deployment | Docker, Railway, Streamlit Cloud |
+## Features
 
-## 🚀 Quick Start
+- One-token-per-student enforcement to prevent fraud
+- Real-time QR validation via device camera
+- Admin analytics with CSV export
+- Cloud-deployable on Streamlit Cloud, Railway, or Docker
+
+## Getting Started
 
 ```bash
-# Clone the repo
 git clone https://github.com/kishore-code-create/canteen-token-system.git
 cd canteen-token-system
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Run all apps together
 python run_apps.py
 ```
 
-### Individual Apps
+**Run individual apps:**
 ```bash
-streamlit run canteen_app/app.py      # Student app
-streamlit run admin_scanner_app/app.py # Scanner/Admin app
+streamlit run canteen_app/app.py
+streamlit run admin_scanner_app/app.py
 ```
 
-## 📁 Project Structure
+**Docker:**
+```bash
+docker-compose up --build
+```
+
+## Project Structure
 
 ```
 canteen-token-system/
-├── canteen_app/          # Student-facing token app
-├── admin_scanner_app/    # Admin and scanner app
+├── canteen_app/          # Student token interface
+├── admin_scanner_app/    # Admin and scanner interface
 ├── student_app/          # Student portal
 ├── models.py             # Database models
-├── run_apps.py           # Launch all apps
-├── streamlit_app.py      # Unified Streamlit entry
+├── run_apps.py           # Multi-app launcher
 ├── Dockerfile.*          # Docker configurations
 └── requirements.txt
 ```
 
-## 👨‍💻 Author
+## Author
 
-**Nanda Kishore** — AI/ML Engineer  
-📧 nandakishoredevarashetti@gmail.com  
-🔗 [GitHub](https://github.com/kishore-code-create) | [LinkedIn](https://linkedin.com/in/nanda-kishore-devarashetti)
+**Nanda Kishore** — [nandakishoredevarashetti@gmail.com](mailto:nandakishoredevarashetti@gmail.com)  
+[GitHub](https://github.com/kishore-code-create) · [LinkedIn](https://linkedin.com/in/nanda-kishore-devarashetti)
 
-## 📄 License
+---
 
 MIT License
-
